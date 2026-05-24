@@ -1,0 +1,31 @@
+{
+  "name": "TripTalk",
+  "short_name": "TripTalk",
+  "description": "Offline Greek travel phrase cards with English and Greek audio.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#17130f",
+  "theme_color": "#17130f",
+  "icons": [
+    {
+      "src": "icons/triptalk-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/triptalk-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/triptalk-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

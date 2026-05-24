@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#17130f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="TripTalk" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>TripTalk</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/triptalk-180.png" />
+  <script src="scripts/phrases.js"></script>
+  <link rel="stylesheet" href="styles/triptalk.css" />
+</head>
+<body>
+  <main class="prototype-shell">
+    <header id="topbar" class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="images/TripTalk.png" alt="TripTalk" />
+      </div>
+      <div class="topbar-settings">
+        <div id="continuousIndicator" class="continuous-indicator" aria-hidden="true">
+          <span class="continuous-indicator-icon" aria-hidden="true">⟳</span>
+          <span>Continuous</span>
+        </div>
+        <div class="speed-pill">Audio Speed: <span id="speedValue">100%</span></div>
+        <label id="shuffleControl" class="shuffle-control topbar-shuffle">
+          <input id="shuffleToggle" type="checkbox" />
+          <span>Shuffle cards</span>
+        </label>
+        <button id="helpButton" class="help-button" type="button" aria-label="Show help">?</button>
+      </div>
+    </header>
+
+    <section id="selectionView" class="selection-view" aria-label="Choose a section">
+      <div class="section-copy">
+        <div>
+          <h2 id="sectionTitle">Section</h2>
+          <p id="sectionMeta" class="section-meta">Click the side cards or dots to browse.</p>
+        </div>
+      </div>
+
+      <div id="carouselWindow" class="carousel-window">
+        <div id="coverTrack" class="cover-track" aria-live="polite"></div>
+      </div>
+
+      <div class="lower-controls">
+        <div id="countPill" class="count-pill">0 cards</div>
+        <div id="cardControls" class="card-controls" aria-label="Card controls">
+          <button id="cardPrevButton" class="card-control" type="button">Previous card</button>
+          <button id="cardNextButton" class="card-control" type="button">Next card</button>
+        </div>
+        <div id="dotRow" class="dot-row" aria-label="Section shortcuts"></div>
+      </div>
+
+      <div id="helpPanel" class="help-panel" aria-label="Help">
+        <div class="help-panel-header">
+          <div>
+            <h2>Help</h2>
+            <p class="section-meta">Keyboard controls and touch/click actions for TripTalk.</p>
+          </div>
+          <button id="closeHelpIconButton" class="help-button help-close-button" type="button" aria-label="Close help">×</button>
+        </div>
+        <div class="help-grid">
+          <div class="help-item"><strong>Click center card</strong><span>Start the selected section, then advance to the next card.</span></div>
+          <div class="help-item"><strong>Click side cards</strong><span>Switch sections and show that section's title card.</span></div>
+          <div class="help-item"><strong>Enter</strong><span>Advance to the next card.</span></div>
+          <div class="help-item"><strong>Arrow Left / Arrow Right</strong><span>Before card mode, change sections. In card mode, move previous or next card.</span></div>
+          <div class="help-item"><strong>End of section</strong><span>Next from the last card opens the next section. Previous from the first card opens the previous section.</span></div>
+          <div class="help-item"><strong>Shift + Arrow</strong><span>In card mode, change sections instead of changing cards.</span></div>
+          <div class="help-item"><strong>, and .</strong><span>Use comma and period like left and right arrows.</span></div>
+          <div class="help-item"><strong>&lt; and &gt;</strong><span>Use shifted comma and period like Shift + Arrow for section changes.</span></div>
+          <div class="help-item"><strong>Space / E</strong><span>Play the card audio with Space. Replay English with E, or tap the tan play button on the card.</span></div>
+          <div class="help-item"><strong>A</strong><span>Toggle automatic English playback when cards appear.</span></div>
+          <div class="help-item"><strong>C</strong><span>Toggle Continuous Playback. In card mode, English finishes, waits 2 seconds, then Greek plays, waits 2 seconds, and advances to the next card. If English is off, Greek plays and waits 2 seconds before advancing.</span></div>
+          <div class="help-item"><strong>G</strong><span>Toggle Global Mode. Global Mode combines every section into one deck; when Shuffle is on, all cards are shuffled together.</span></div>
+          <div class="help-item"><strong>[ / ]</strong><span>Decrease or increase the Continuous Playback pause from English to Greek. When English is off, this controls the pause from one Greek phrase to the next.</span></div>
+          <div class="help-item"><strong>+ / -</strong><span>Speed up or slow down target-language audio by 5%, from 75% to 150%.</span></div>
+          <div class="help-item"><strong>S</strong><span>Toggle shuffled card order on or off. New sections use the current shuffle setting.</span></div>
+          <div class="help-item"><strong>P</strong><span>Toggle the Greek pronunciation chart on or off.</span></div>
+          <div class="help-item"><strong>H / ?</strong><span>Toggle this help panel on or off. Escape also closes it.</span></div>
+        </div>
+        <div class="help-actions">
+          <button id="closeHelpButton" class="card-control" type="button">Close</button>
+        </div>
+      </div>
+    </section>
+
+    <aside id="pronunciationPanel" class="pronunciation-panel" aria-label="Greek pronunciation guide" aria-hidden="true">
+      <div class="pronunciation-panel-header">
+        <div>
+          <h2>Pronunciation</h2>
+          <p class="section-meta">Modern Greek alphabet and common letter combinations.</p>
+        </div>
+        <button id="closePronunciationButton" class="help-button pronunciation-close-button" type="button" aria-label="Close pronunciation guide">×</button>
+      </div>
+
+      <div class="pronunciation-scroll">
+        <table class="pronunciation-table">
+          <caption>Greek Alphabet</caption>
+          <thead>
+            <tr>
+              <th scope="col">Letter</th>
+              <th scope="col">Greek Name</th>
+              <th scope="col">Plain-English Sound</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Α α</td><td>Alfa</td><td>ah as in father</td></tr>
+            <tr><td>Β β</td><td>Vita</td><td>v as in very</td></tr>
+            <tr><td>Γ γ</td><td>Ghamma</td><td>soft gh/y; before e or i, like y in yes</td></tr>
+            <tr><td>Δ δ</td><td>Thelta</td><td>soft th as in this</td></tr>
+            <tr><td>Ε ε</td><td>Epsilon</td><td>eh as in bed</td></tr>
+            <tr><td>Ζ ζ</td><td>Zita</td><td>z as in zebra</td></tr>
+            <tr><td>Η η</td><td>Ita</td><td>ee as in see</td></tr>
+            <tr><td>Θ θ</td><td>Thita</td><td>hard th as in think</td></tr>
+            <tr><td>Ι ι</td><td>Yota</td><td>ee as in see</td></tr>
+            <tr><td>Κ κ</td><td>Kappa</td><td>k as in kite</td></tr>
+            <tr><td>Λ λ</td><td>Lamtha</td><td>l as in light</td></tr>
+            <tr><td>Μ μ</td><td>Mi</td><td>m as in moon</td></tr>
+            <tr><td>Ν ν</td><td>Ni</td><td>n as in no</td></tr>
+            <tr><td>Ξ ξ</td><td>Ksi</td><td>ks as in backs</td></tr>
+            <tr><td>Ο ο</td><td>Omikron</td><td>oh as in more, short</td></tr>
+            <tr><td>Π π</td><td>Pi</td><td>p as in spin</td></tr>
+            <tr><td>Ρ ρ</td><td>Ro</td><td>rolled or flapped r</td></tr>
+            <tr><td>Σ σ/ς</td><td>Sigma</td><td>s as in sun; ς is final sigma</td></tr>
+            <tr><td>Τ τ</td><td>Taf</td><td>t as in stop</td></tr>
+            <tr><td>Υ υ</td><td>Ipsilon</td><td>ee as in see</td></tr>
+            <tr><td>Φ φ</td><td>Fi</td><td>f as in fish</td></tr>
+            <tr><td>Χ χ</td><td>Hi</td><td>raspy h/ch, like Scottish loch</td></tr>
+            <tr><td>Ψ ψ</td><td>Psi</td><td>ps as in lapse</td></tr>
+            <tr><td>Ω ω</td><td>Omega</td><td>oh as in more; same as Ο in modern Greek</td></tr>
+          </tbody>
+        </table>
+
+        <table class="pronunciation-table">
+          <caption>Letter Combinations</caption>
+          <thead>
+            <tr>
+              <th scope="col">Combo</th>
+              <th scope="col">Greek Names</th>
+              <th scope="col">Plain-English Sound</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>αι</td><td>alfa + yota</td><td>eh as in bed</td></tr>
+            <tr><td>ει</td><td>epsilon + yota</td><td>ee as in see</td></tr>
+            <tr><td>οι</td><td>omikron + yota</td><td>ee as in see</td></tr>
+            <tr><td>υι</td><td>ipsilon + yota</td><td>ee as in see</td></tr>
+            <tr><td>ου</td><td>omikron + ipsilon</td><td>oo as in moon</td></tr>
+            <tr><td>αυ</td><td>alfa + ipsilon</td><td>av before voiced sounds; af before voiceless sounds</td></tr>
+            <tr><td>ευ</td><td>epsilon + ipsilon</td><td>ev before voiced sounds; ef before voiceless sounds</td></tr>
+            <tr><td>ηυ</td><td>ita + ipsilon</td><td>iv before voiced sounds; if before voiceless sounds</td></tr>
+            <tr><td>μπ</td><td>mi + pi</td><td>b as in boy at word start; often mb inside words</td></tr>
+            <tr><td>ντ</td><td>ni + taf</td><td>d as in donkey at word start; often nd inside words</td></tr>
+            <tr><td>γκ</td><td>ghamma + kappa</td><td>g as in go at word start; often ng inside words</td></tr>
+            <tr><td>γγ</td><td>ghamma + ghamma</td><td>ng or hard g, like finger</td></tr>
+            <tr><td>τσ</td><td>taf + sigma</td><td>ts as in cats</td></tr>
+            <tr><td>τζ</td><td>taf + zita</td><td>dz, like adze; sometimes like a soft j</td></tr>
+            <tr><td>μπρ</td><td>mi + pi + ro</td><td>br as in bring</td></tr>
+            <tr><td>ντρ</td><td>ni + taf + ro</td><td>dr as in drink</td></tr>
+            <tr><td>γκρ</td><td>ghamma + kappa + ro</td><td>gr as in green</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </aside>
+  </main>
+
+  <audio id="englishAudio" preload="metadata"></audio>
+  <audio id="greekAudio" preload="metadata"></audio>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="scripts/triptalk.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((error) => {
+          console.warn('TripTalk service worker registration failed.', error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
