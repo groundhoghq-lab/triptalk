@@ -8,12 +8,14 @@ TripTalk is a standalone Greek travel phrase flashcard app. It runs entirely fro
 - Illustrated flashcards backed by local PNG assets.
 - English and Greek audio for each phrase, loaded from local MP3 files.
 - Automatic English playback when a card appears.
-- Tap/click Greek playback from the card audio button, or use the keyboard.
-- Adjustable Greek audio speed from 75% to 150%.
+- Bottom transport controls for section navigation, card navigation, and target-language audio play/pause/resume.
+- Adjustable target audio speed from 75% to 150%.
 - Shuffle mode for practicing cards in random order.
 - Global Mode for practicing every section as one combined deck.
 - Continuous Playback mode for hands-free practice.
-- Built-in help panel with current controls.
+- Hamburger menu with Settings, Pronunciation, Help, and About.
+- Settings modal with English, Global, Shuffle, Continuous, Continuous pause, and Target Audio Speed controls.
+- Built-in help panel, pronunciation guide, and about screen.
 - Responsive layout for desktop and mobile browsers.
 - Offline-first design with no internet connection or package install required.
 
@@ -48,11 +50,10 @@ No build step, server, or dependency installation is required.
 - Click the center section card to start that section.
 - Click side cards or section dots to switch sections before starting.
 - Click the center flashcard to advance to the next card.
-- Use the Previous card and Next card buttons while reviewing a section.
-- Click the small audio button on a flashcard to play the Greek phrase.
-- Turn on Shuffle cards to randomize card order for each section.
-- Press `G` to toggle Global Mode; when Global Mode and Shuffle are both on, all cards are shuffled together across sections.
-- Press the alpha button in the top bar to open help.
+- Use the bottom transport controls to move between sections, move between cards, and play, pause, or resume target-language audio.
+- Open Settings from the hamburger menu to toggle English, Continuous, Global, or Shuffle, adjust the Continuous pause, or change Target Audio Speed.
+- Turn on Shuffle to randomize card order for each section.
+- Turn on Global Mode to combine every section into one deck; when Global Mode and Shuffle are both on, all cards are shuffled together across sections.
 
 When you move past the last card in a section, TripTalk automatically opens the next section. Moving backward from the first card opens the previous section.
 
@@ -61,20 +62,22 @@ When you move past the last card in a section, TripTalk automatically opens the 
 | Shortcut | Action |
 | --- | --- |
 | `Enter` | Start or advance to the next card |
-| `Space` | Start from section view, or play Greek audio in card view |
+| `Space` | Start from section view, or play/pause/resume Greek audio in card view |
 | `Arrow Left` / `Arrow Right` | Change sections before card mode; previous/next card in card mode |
 | `Shift + Arrow Left` / `Shift + Arrow Right` | Change sections while in card mode |
 | `,` / `.` | Previous/next, like the arrow keys |
 | `<` / `>` | Change sections, like shifted arrow keys |
-| `E` | Replay English audio |
-| `A` | Toggle automatic English playback |
+| `R` | Reset the current card, rewind its audio, and replay English if English is on |
+| `E` | Toggle automatic English playback |
 | `C` | Toggle Continuous Playback |
 | `G` | Toggle Global Mode across all sections |
 | `[` / `]` | Decrease/increase the Continuous Playback pause |
-| `+` / `-` | Increase/decrease Greek audio speed by 5% |
+| `+` / `-` | Increase/decrease target audio speed by 5% |
 | `S` | Toggle shuffled card order |
+| `P` | Toggle the pronunciation guide |
+| `I` | Toggle the about screen |
 | `H` or `?` | Toggle the help panel |
-| `Escape` | Close the help panel |
+| `Escape` | Close open panels or the hamburger menu |
 
 ## Project Structure
 

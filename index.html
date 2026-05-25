@@ -17,19 +17,24 @@
   <main class="prototype-shell">
     <header id="topbar" class="topbar">
       <div class="brand">
+        <button id="menuButton" class="menu-button" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mainMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <img class="brand-logo" src="images/TripTalk.png" alt="TripTalk" />
+        <div id="mainMenu" class="main-menu" aria-label="Main menu">
+          <button id="menuSettingsButton" class="main-menu-item" type="button">Settings</button>
+          <div class="main-menu-separator" role="presentation"></div>
+          <button id="menuPronunciationButton" class="main-menu-item" type="button">Pronunciation</button>
+          <button id="menuHelpButton" class="main-menu-item" type="button">Help</button>
+          <button id="menuAboutButton" class="main-menu-item" type="button">About</button>
+        </div>
       </div>
       <div class="topbar-settings">
-        <div id="continuousIndicator" class="continuous-indicator" aria-hidden="true">
+        <button id="continuousIndicator" class="continuous-indicator" type="button" aria-label="Continuous Mode: Off" aria-pressed="false" title="Continuous Mode: Off">
           <span class="continuous-indicator-icon" aria-hidden="true">⟳</span>
-          <span>Continuous</span>
-        </div>
-        <div class="speed-pill">Audio Speed: <span id="speedValue">100%</span></div>
-        <label id="shuffleControl" class="shuffle-control topbar-shuffle">
-          <input id="shuffleToggle" type="checkbox" />
-          <span>Shuffle cards</span>
-        </label>
-        <button id="helpButton" class="help-button" type="button" aria-label="Show help">?</button>
+        </button>
       </div>
     </header>
 
@@ -47,9 +52,12 @@
 
       <div class="lower-controls">
         <div id="countPill" class="count-pill">0 cards</div>
-        <div id="cardControls" class="card-controls" aria-label="Card controls">
-          <button id="cardPrevButton" class="card-control" type="button">Previous card</button>
-          <button id="cardNextButton" class="card-control" type="button">Next card</button>
+        <div id="cardControls" class="card-controls transport-controls" aria-label="Practice controls">
+          <button id="sectionPrevButton" class="card-control transport-button transport-section" type="button" aria-label="Previous section" title="Previous section"><span class="transport-icon">&#x23EE;&#xFE0E;</span></button>
+          <button id="cardPrevButton" class="card-control transport-button transport-card" type="button" aria-label="Previous card" title="Previous card"><span class="transport-icon">&#x23EA;&#xFE0E;</span></button>
+          <button id="navPlayButton" class="card-control transport-button transport-play" type="button" aria-label="Start section"><span class="transport-label">Start</span></button>
+          <button id="cardNextButton" class="card-control transport-button transport-card" type="button" aria-label="Next card" title="Next card"><span class="transport-icon">&#x23E9;&#xFE0E;</span></button>
+          <button id="sectionNextButton" class="card-control transport-button transport-section" type="button" aria-label="Next section" title="Next section"><span class="transport-icon">&#x23ED;&#xFE0E;</span></button>
         </div>
         <div id="dotRow" class="dot-row" aria-label="Section shortcuts"></div>
       </div>
@@ -63,21 +71,25 @@
           <button id="closeHelpIconButton" class="help-button help-close-button" type="button" aria-label="Close help">×</button>
         </div>
         <div class="help-grid">
-          <div class="help-item"><strong>Click center card</strong><span>Start the selected section, then advance to the next card.</span></div>
-          <div class="help-item"><strong>Click side cards</strong><span>Switch sections and show that section's title card.</span></div>
+          <div class="help-item"><strong>Center card</strong><span>Start the selected section, then advance to the next card.</span></div>
+          <div class="help-item"><strong>Side cards / dots</strong><span>Switch sections and show that section's title card.</span></div>
+          <div class="help-item"><strong>Transport buttons</strong><span>Move by section or card, and play, pause, or resume target-language audio.</span></div>
+          <div class="help-item"><strong>Menu</strong><span>Open Settings, Pronunciation, Help, and About.</span></div>
           <div class="help-item"><strong>Enter</strong><span>Advance to the next card.</span></div>
           <div class="help-item"><strong>Arrow Left / Arrow Right</strong><span>Before card mode, change sections. In card mode, move previous or next card.</span></div>
           <div class="help-item"><strong>End of section</strong><span>Next from the last card opens the next section. Previous from the first card opens the previous section.</span></div>
           <div class="help-item"><strong>Shift + Arrow</strong><span>In card mode, change sections instead of changing cards.</span></div>
           <div class="help-item"><strong>, and .</strong><span>Use comma and period like left and right arrows.</span></div>
           <div class="help-item"><strong>&lt; and &gt;</strong><span>Use shifted comma and period like Shift + Arrow for section changes.</span></div>
-          <div class="help-item"><strong>Space / E</strong><span>Play the card audio with Space. Replay English with E, or tap the tan play button on the card.</span></div>
-          <div class="help-item"><strong>A</strong><span>Toggle automatic English playback when cards appear.</span></div>
+          <div class="help-item"><strong>Space</strong><span>Start from section view, or play, pause, and resume target-language audio in card view.</span></div>
+          <div class="help-item"><strong>R</strong><span>Reset the current card and rewind its audio. If English is on, English plays again.</span></div>
+          <div class="help-item"><strong>E</strong><span>Toggle automatic English playback when cards appear.</span></div>
           <div class="help-item"><strong>C</strong><span>Toggle Continuous Playback. In card mode, English finishes, waits 2 seconds, then Greek plays, waits 2 seconds, and advances to the next card. If English is off, Greek plays and waits 2 seconds before advancing.</span></div>
           <div class="help-item"><strong>G</strong><span>Toggle Global Mode. Global Mode combines every section into one deck; when Shuffle is on, all cards are shuffled together.</span></div>
           <div class="help-item"><strong>[ / ]</strong><span>Decrease or increase the Continuous Playback pause from English to Greek. When English is off, this controls the pause from one Greek phrase to the next.</span></div>
           <div class="help-item"><strong>+ / -</strong><span>Speed up or slow down target-language audio by 5%, from 75% to 150%.</span></div>
           <div class="help-item"><strong>S</strong><span>Toggle shuffled card order on or off. New sections use the current shuffle setting.</span></div>
+          <div class="help-item"><strong>I</strong><span>Show the TripTalk about screen.</span></div>
           <div class="help-item"><strong>P</strong><span>Toggle the Greek pronunciation chart on or off.</span></div>
           <div class="help-item"><strong>H / ?</strong><span>Toggle this help panel on or off. Escape also closes it.</span></div>
         </div>
@@ -163,6 +175,52 @@
             <tr><td>γκρ</td><td>ghamma + kappa + ro</td><td>gr as in green</td></tr>
           </tbody>
         </table>
+      </div>
+    </aside>
+
+    <aside id="aboutPanel" class="about-panel" aria-label="About TripTalk" aria-hidden="true">
+      <div class="about-dialog">
+        <button id="closeAboutButton" class="help-button about-close-button" type="button" aria-label="Close about">×</button>
+        <img class="about-icon" src="images/TripTalk.png" alt="TripTalk" />
+        <p class="about-copyright">Copyright &copy; <span id="copyrightYear"></span> grounhogHQ</p>
+      </div>
+    </aside>
+
+    <aside id="settingsPanel" class="settings-panel" aria-label="Settings" aria-hidden="true">
+      <div class="settings-dialog">
+        <div class="settings-header">
+          <h2>Settings</h2>
+          <button id="closeSettingsButton" class="help-button settings-close-button" type="button" aria-label="Close settings">×</button>
+        </div>
+        <div class="settings-list">
+          <label class="settings-toggle">
+            <span>English</span>
+            <input id="settingsEnglishToggle" type="checkbox" role="switch" />
+          </label>
+          <label class="settings-toggle">
+            <span>Global</span>
+            <input id="settingsGlobalToggle" type="checkbox" role="switch" />
+          </label>
+          <label class="settings-toggle">
+            <span>Shuffle</span>
+            <input id="settingsShuffleToggle" type="checkbox" role="switch" />
+          </label>
+          <div class="settings-separator" role="presentation"></div>
+          <div class="settings-stepper" aria-label="Continuous pause">
+            <span class="settings-control-label">Continuous Pause</span>
+            <button id="settingsPauseDecreaseButton" class="settings-stepper-button" type="button" aria-label="Decrease Continuous pause">-</button>
+            <span id="settingsContinuousPauseValue" class="settings-stepper-value">2 sec</span>
+            <button id="settingsPauseIncreaseButton" class="settings-stepper-button" type="button" aria-label="Increase Continuous pause">+</button>
+          </div>
+          <div class="settings-separator" role="presentation"></div>
+          <label class="settings-slider">
+            <span class="settings-slider-header">
+              <span>Target Audio Speed</span>
+              <span id="settingsTargetAudioSpeedValue">100%</span>
+            </span>
+            <input id="settingsTargetAudioSpeedSlider" type="range" min="75" max="150" step="5" value="100" />
+          </label>
+        </div>
       </div>
     </aside>
   </main>

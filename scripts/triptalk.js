@@ -29,12 +29,35 @@
   let continuousPauseResolve = null;
   let continuousPauseToken = null;
   let isPronunciationOpen = false;
+  let isAboutOpen = false;
+  let isSettingsOpen = false;
+  let isMenuOpen = false;
   let shouldResumeContinuousAfterHelp = false;
   let continuousResumeStep = 'start';
+  let pressedSectionCard = null;
+  let suppressNextCoverClick = false;
 
   const els = {
     topbar: document.getElementById('topbar'),
-    helpButton: document.getElementById('helpButton'),
+    menuButton: document.getElementById('menuButton'),
+    mainMenu: document.getElementById('mainMenu'),
+    menuSettingsButton: document.getElementById('menuSettingsButton'),
+    settingsPanel: document.getElementById('settingsPanel'),
+    closeSettingsButton: document.getElementById('closeSettingsButton'),
+    settingsContinuousPauseValue: document.getElementById('settingsContinuousPauseValue'),
+    settingsPauseDecreaseButton: document.getElementById('settingsPauseDecreaseButton'),
+    settingsPauseIncreaseButton: document.getElementById('settingsPauseIncreaseButton'),
+    settingsGlobalToggle: document.getElementById('settingsGlobalToggle'),
+    settingsEnglishToggle: document.getElementById('settingsEnglishToggle'),
+    settingsShuffleToggle: document.getElementById('settingsShuffleToggle'),
+    settingsTargetAudioSpeedSlider: document.getElementById('settingsTargetAudioSpeedSlider'),
+    settingsTargetAudioSpeedValue: document.getElementById('settingsTargetAudioSpeedValue'),
+    menuPronunciationButton: document.getElementById('menuPronunciationButton'),
+    menuHelpButton: document.getElementById('menuHelpButton'),
+    menuAboutButton: document.getElementById('menuAboutButton'),
+    aboutPanel: document.getElementById('aboutPanel'),
+    closeAboutButton: document.getElementById('closeAboutButton'),
+    copyrightYear: document.getElementById('copyrightYear'),
     closeHelpButton: document.getElementById('closeHelpButton'),
     closeHelpIconButton: document.getElementById('closeHelpIconButton'),
     pronunciationPanel: document.getElementById('pronunciationPanel'),
@@ -47,16 +70,22 @@
     coverTrack: document.getElementById('coverTrack'),
     dotRow: document.getElementById('dotRow'),
     cardControls: document.getElementById('cardControls'),
+    sectionPrevButton: document.getElementById('sectionPrevButton'),
     cardPrevButton: document.getElementById('cardPrevButton'),
+    navPlayButton: document.getElementById('navPlayButton'),
     cardNextButton: document.getElementById('cardNextButton'),
-    shuffleControl: document.getElementById('shuffleControl'),
-    shuffleToggle: document.getElementById('shuffleToggle'),
-    speedValue: document.getElementById('speedValue'),
+    sectionNextButton: document.getElementById('sectionNextButton'),
     continuousIndicator: document.getElementById('continuousIndicator'),
     englishAudio: document.getElementById('englishAudio'),
     greekAudio: document.getElementById('greekAudio'),
     toast: document.getElementById('toast')
   };
+
+  const touchDeviceQuery = window.matchMedia('(pointer: coarse), (hover: none)');
+
+  function syncDeviceClass() {
+    document.body.classList.toggle('is-touch-device', touchDeviceQuery.matches);
+  }
 
   function wrapIndex(index) {
     return (index + sections.length) % sections.length;
@@ -174,6 +203,34 @@
     stopAudio();
   }
 
+  function resetAudioToStart(kind) {
+    const audioInfo = resolveAudioInfo(currentRecord(), kind);
+    const audio = kind === 'english' ? els.englishAudio : els.greekAudio;
+    if (!audioInfo?.file || !audio) return;
+
+    updateAudioSource(kind, audioInfo.file);
+    if (audio.readyState >= 1) {
+      audio.currentTime = Math.max(0, audioInfo.startSeconds || 0);
+      return;
+    }
+    audio.load();
+  }
+
+  function resetCurrentCard() {
+    if (!isPlaying) return;
+
+    stopContinuousPlayback();
+    resetAudioToStart('english');
+    resetAudioToStart('greek');
+    setGreekAudioButtonActive(false);
+    updateTransportPlayButton();
+    if (autoEnglish) {
+      showToast('Card reset');
+      return playSegment('english');
+    }
+    showToast('Card reset');
+  }
+
   function waitForContinuousPause({ durationMs = continuousPauseMs, useSetting = true } = {}) {
     return new Promise((resolve) => {
       continuousPauseDurationMs = durationMs;
@@ -187,6 +244,7 @@
   function setContinuousPauseSeconds(value) {
     continuousPauseSeconds = Math.max(0, Math.min(15, value));
     continuousPauseMs = continuousPauseSeconds * 1000;
+    syncSettingsControls();
     showToast(`Continuous Pause: ${continuousPauseSeconds}`);
     if (continuousPauseUsesSetting) scheduleContinuousPauseTimer();
   }
@@ -307,6 +365,30 @@
     advanceCard();
   }
 
+  async function toggleGreekAudioFromTransport() {
+    if (!isPlaying) return;
+
+    if (isGreekAudioButtonActive && !els.greekAudio.paused) {
+      els.greekAudio.pause();
+      setGreekAudioButtonActive(false);
+      return;
+    }
+
+    if (canResumeCurrentGreekAudio()) {
+      try {
+        els.greekAudio.playbackRate = greekAudioSpeed / 100;
+        await els.greekAudio.play();
+        setGreekAudioButtonActive(true);
+      } catch (error) {
+        setGreekAudioButtonActive(false);
+        console.warn(error);
+      }
+      return;
+    }
+
+    return playGreekFromUser();
+  }
+
   function startContinuousPlayback() {
     if (!continuousMode || !sections.length) return;
     continuousPlaybackToken += 1;
@@ -320,13 +402,55 @@
 
   function setGreekAudioButtonActive(isActive) {
     isGreekAudioButtonActive = isActive;
-    els.coverTrack
-      ?.querySelector('.cover-card.is-center.is-card')
-      ?.classList.toggle('is-greek-audio-active', isActive);
+    els.navPlayButton?.classList.toggle('is-audio-active', isActive);
+    updateTransportPlayButton();
+  }
+
+  function canResumeCurrentGreekAudio() {
+    const currentGreekFile = resolveAudioInfo(currentRecord(), 'greek')?.file;
+    return Boolean(
+      isPlaying &&
+      currentGreekFile &&
+      els.greekAudio.getAttribute('src') === currentGreekFile &&
+      els.greekAudio.paused &&
+      !els.greekAudio.ended &&
+      els.greekAudio.currentTime > 0
+    );
+  }
+
+  function updateTransportPlayButton() {
+    if (!els.navPlayButton) return;
+    els.navPlayButton.classList.toggle('is-audio-paused', canResumeCurrentGreekAudio());
+    const setTransportPlayContent = (label, icon) => {
+      els.navPlayButton.innerHTML = `<span class="transport-label">${label}</span><span class="transport-icon">${icon}</span>`;
+    };
+    if (!isPlaying) {
+      const name = sectionName(activeSection(), activeIndex);
+      els.navPlayButton.innerHTML = '<span class="transport-label">Start</span>';
+      els.navPlayButton.setAttribute('aria-label', `Start ${name}`);
+      return;
+    }
+    if (isGreekAudioButtonActive) {
+      setTransportPlayContent('Pause', '⏸');
+      els.navPlayButton.setAttribute('aria-label', 'Pause Greek audio');
+      return;
+    }
+    if (canResumeCurrentGreekAudio()) {
+      setTransportPlayContent('Resume', '▶');
+      els.navPlayButton.setAttribute('aria-label', 'Resume Greek audio');
+      return;
+    }
+    setTransportPlayContent('Play', '▶');
+    els.navPlayButton.setAttribute('aria-label', 'Play Greek audio');
   }
 
   function updateContinuousIndicator() {
-    els.continuousIndicator?.classList.toggle('is-visible', continuousMode);
+    if (!els.continuousIndicator) return;
+    const label = `Continuous Mode: ${continuousMode ? 'On' : 'Off'}`;
+    els.continuousIndicator.classList.toggle('is-active', continuousMode);
+    els.continuousIndicator.setAttribute('aria-label', label);
+    els.continuousIndicator.setAttribute('aria-pressed', String(continuousMode));
+    els.continuousIndicator.setAttribute('title', label);
   }
 
   function updateAudioSource(kind, file) {
@@ -434,7 +558,6 @@
     const plainImage = activeRecord ? resolveRecordImage(activeRecord) : resolveSectionImage(section);
     const colorImage = activeRecord ? resolveRecordImage(activeRecord) : resolveSectionHoverImage(section) || resolveSectionImage(section);
     const cardClass = activeRecord ? ' is-card' : '';
-    const audioActiveClass = activeRecord && isGreekAudioButtonActive ? ' is-greek-audio-active' : '';
     const flipClass = activeRecord && cardTransition === 'flip' && !suppressNextFlip ? ` flip-${flipDirection}` : '';
     const fadeClass = activeRecord && cardTransition === 'fade' && !suppressNextFlip ? ' fade-in' : '';
     const crossfadeImage = activeRecord && cardTransition === 'fade' && crossfadeFromImage && !suppressNextFlip
@@ -444,11 +567,10 @@
     const actionLabel = activeRecord ? `Show next ${name} card` : slot === 0 ? `Start ${name}` : `Select ${name}`;
 
     return `
-      <div class="cover-card ${className}${cardClass}${audioActiveClass}${flipClass}${fadeClass}${noFlipClass}" role="button" tabindex="0" data-index="${index}" style="--tilt: ${tilt}" aria-label="${actionLabel}">
+      <div class="cover-card ${className}${cardClass}${flipClass}${fadeClass}${noFlipClass}" role="button" tabindex="0" data-index="${index}" style="--tilt: ${tilt}" aria-label="${actionLabel}">
         <img class="cover-plain" src="${plainImage}" alt="" />
         <img class="cover-color" src="${colorImage}" alt="" />
         ${crossfadeImage}
-        ${activeRecord ? '<span class="greek-audio-button" role="button" tabindex="0" aria-label="Play Greek audio" title="Play Greek"></span>' : ''}
       </div>
     `;
   }
@@ -456,8 +578,19 @@
   function renderDots() {
     els.dotRow.innerHTML = sections.map((section, index) => {
       const name = sectionName(section, index);
-      return `<button class="dot ${index === activeIndex ? 'is-active' : ''}" type="button" data-index="${index}" aria-label="Go to ${name}"></button>`;
+      return `<button class="dot ${index === activeIndex ? 'is-active' : ''}" type="button" data-index="${index}" aria-label="Go to ${name}" title="${name}"></button>`;
     }).join('');
+  }
+
+  function syncSettingsControls() {
+    els.settingsGlobalToggle.checked = globalMode;
+    els.settingsEnglishToggle.checked = autoEnglish;
+    els.settingsShuffleToggle.checked = isShuffled;
+    els.settingsContinuousPauseValue.textContent = `${continuousPauseSeconds} sec`;
+    els.settingsPauseDecreaseButton.disabled = continuousPauseSeconds <= 0;
+    els.settingsPauseIncreaseButton.disabled = continuousPauseSeconds >= 15;
+    els.settingsTargetAudioSpeedSlider.value = String(greekAudioSpeed);
+    els.settingsTargetAudioSpeedValue.textContent = `${greekAudioSpeed}%`;
   }
 
   function renderCarousel() {
@@ -481,10 +614,12 @@
     els.selectionView.classList.toggle('is-playing', isPlaying);
     els.selectionView.classList.toggle('is-helping', isHelpOpen);
     els.topbar.classList.toggle('is-helping', isHelpOpen);
-    els.cardControls.classList.toggle('is-visible', isPlaying);
     els.cardPrevButton.disabled = !isPlaying || recordCount < 2;
     els.cardNextButton.disabled = !isPlaying || recordCount < 2;
-    els.shuffleToggle.checked = isShuffled;
+    els.sectionPrevButton.disabled = sections.length < 2 || globalMode;
+    els.sectionNextButton.disabled = sections.length < 2 || globalMode;
+    syncSettingsControls();
+    updateTransportPlayButton();
     els.carouselWindow.classList.toggle('is-playing', isPlaying);
 
     els.coverTrack.innerHTML = globalMode
@@ -504,7 +639,7 @@
     crossfadeFromImage = '';
   }
 
-  function setActiveIndex(index) {
+  function setActiveIndex(index, { resumeContinuous = true } = {}) {
     stopContinuousPlayback();
     isPlaying = false;
     globalMode = false;
@@ -512,7 +647,7 @@
     currentCardPosition = -1;
     cardOrder = [];
     renderCarousel();
-    if (continuousMode) {
+    if (resumeContinuous && continuousMode) {
       startContinuousPlayback();
     }
   }
@@ -522,7 +657,7 @@
     if ((!globalMode && (!section || !Array.isArray(section.records) || !section.records.length)) || (globalMode && !sections.some((deckSection) => deckSection.records?.length))) return;
     const wasPlaying = isPlaying;
     const transitionForCard = wasPlaying ? 'flip' : 'fade';
-    if (!wasPlaying) crossfadeFromImage = resolveSectionImage(section);
+    if (!wasPlaying) crossfadeFromImage = resolveSectionHoverImage(section) || resolveSectionImage(section);
     if (!cardOrder.length) buildCardOrder(section);
     isPlaying = true;
     flipDirection = direction;
@@ -570,7 +705,7 @@
 
   function setShuffle(enabled) {
     isShuffled = enabled;
-    els.shuffleToggle.checked = isShuffled;
+    syncSettingsControls();
     showToast(`Shuffle ${isShuffled ? 'on' : 'off'}`);
     if (isPlaying) {
       stopContinuousPlayback();
@@ -589,6 +724,7 @@
   function toggleGlobalMode() {
     stopContinuousPlayback();
     globalMode = !globalMode;
+    syncSettingsControls();
     isPlaying = false;
     currentCardPosition = -1;
     cardOrder = [];
@@ -606,6 +742,7 @@
 
   function toggleAutoEnglish() {
     autoEnglish = !autoEnglish;
+    syncSettingsControls();
     if (!autoEnglish) {
       stopEnglishAudio();
     }
@@ -614,6 +751,7 @@
 
   function toggleContinuousMode() {
     continuousMode = !continuousMode;
+    syncSettingsControls();
     updateContinuousIndicator();
     if (continuousMode) {
       stopContinuousPlayback();
@@ -627,11 +765,11 @@
     showToast(`Continuous Mode: ${continuousMode ? 'On' : 'Off'}`);
   }
 
-  function setGreekAudioSpeed(value) {
+  function setGreekAudioSpeed(value, { showMessage = true } = {}) {
     greekAudioSpeed = Math.max(75, Math.min(150, value));
-    els.speedValue.textContent = `${greekAudioSpeed}%`;
+    syncSettingsControls();
     els.greekAudio.playbackRate = greekAudioSpeed / 100;
-    showToast(`Audio Speed: ${greekAudioSpeed}%`);
+    if (showMessage) showToast(`Target Audio Speed: ${greekAudioSpeed}%`);
   }
 
   function adjustGreekAudioSpeed(delta) {
@@ -699,42 +837,185 @@
     return openPronunciation();
   }
 
-  els.helpButton.addEventListener('click', () => {
+  function openSettings() {
+    if (isHelpOpen) closeHelp();
+    if (isPronunciationOpen) closePronunciation();
+    if (isAboutOpen) closeAbout();
+    syncSettingsControls();
+    isSettingsOpen = true;
+    els.settingsPanel.classList.add('is-visible');
+    els.settingsPanel.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeSettings() {
+    isSettingsOpen = false;
+    els.settingsPanel.classList.remove('is-visible');
+    els.settingsPanel.setAttribute('aria-hidden', 'true');
+  }
+
+  function openAbout() {
+    if (isHelpOpen) closeHelp();
+    if (isPronunciationOpen) closePronunciation();
+    if (isSettingsOpen) closeSettings();
+    if (continuousMode) {
+      stopContinuousPlayback();
+    } else {
+      stopAudio();
+    }
+    isAboutOpen = true;
+    els.aboutPanel.classList.add('is-visible');
+    els.aboutPanel.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeAbout() {
+    isAboutOpen = false;
+    els.aboutPanel.classList.remove('is-visible');
+    els.aboutPanel.setAttribute('aria-hidden', 'true');
+  }
+
+  function toggleAbout() {
+    if (isAboutOpen) return closeAbout();
+    return openAbout();
+  }
+
+  function resetPressedSectionCard() {
+    if (pressedSectionCard) pressedSectionCard.classList.remove('is-touch-active');
+    pressedSectionCard = null;
+  }
+
+  function isTouchSectionCard(card) {
+    return touchDeviceQuery.matches && card && !card.classList.contains('is-card');
+  }
+
+  function activateCoverCard(card) {
+    const selectedIndex = Number(card.dataset.index);
+    if (selectedIndex === activeIndex) advanceCard();
+    else setActiveIndex(selectedIndex);
+  }
+
+  function previousSection() {
+    if (globalMode) return;
+    setActiveIndex(activeIndex - 1, { resumeContinuous: false });
+  }
+
+  function nextSection() {
+    if (globalMode) return;
+    setActiveIndex(activeIndex + 1, { resumeContinuous: false });
+  }
+
+  function activateTransportPlay() {
+    if (isPlaying) return toggleGreekAudioFromTransport();
+    return advanceCard();
+  }
+
+  function setMenuOpen(isOpen) {
+    isMenuOpen = isOpen;
+    els.mainMenu.classList.toggle('is-visible', isMenuOpen);
+    els.menuButton.setAttribute('aria-expanded', String(isMenuOpen));
+  }
+
+  function toggleMenu() {
+    setMenuOpen(!isMenuOpen);
+  }
+
+  els.menuButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleMenu();
+  });
+  els.menuSettingsButton.addEventListener('click', () => {
+    setMenuOpen(false);
+    return openSettings();
+  });
+  els.continuousIndicator.addEventListener('click', () => {
+    toggleContinuousMode();
+  });
+  els.settingsPauseDecreaseButton.addEventListener('click', () => {
+    adjustContinuousPauseSeconds(-1);
+  });
+  els.settingsPauseIncreaseButton.addEventListener('click', () => {
+    adjustContinuousPauseSeconds(1);
+  });
+  els.settingsGlobalToggle.addEventListener('change', () => {
+    toggleGlobalMode();
+  });
+  els.settingsEnglishToggle.addEventListener('change', () => {
+    toggleAutoEnglish();
+  });
+  els.settingsShuffleToggle.addEventListener('change', (event) => {
+    setShuffle(event.target.checked);
+  });
+  els.settingsTargetAudioSpeedSlider.addEventListener('input', (event) => {
+    setGreekAudioSpeed(Number(event.target.value), { showMessage: false });
+  });
+  els.settingsTargetAudioSpeedSlider.addEventListener('change', (event) => {
+    setGreekAudioSpeed(Number(event.target.value));
+  });
+  els.menuPronunciationButton.addEventListener('click', () => {
+    setMenuOpen(false);
+    return openPronunciation();
+  });
+  els.menuHelpButton.addEventListener('click', () => {
+    setMenuOpen(false);
     if (isHelpOpen) return closeHelp();
     return openHelp();
   });
+  els.menuAboutButton.addEventListener('click', () => {
+    setMenuOpen(false);
+    return openAbout();
+  });
+  els.closeSettingsButton.addEventListener('click', closeSettings);
+  els.closeAboutButton.addEventListener('click', closeAbout);
   els.closeHelpButton.addEventListener('click', closeHelp);
   els.closeHelpIconButton.addEventListener('click', closeHelp);
   els.closePronunciationButton.addEventListener('click', closePronunciation);
+  els.sectionPrevButton.addEventListener('click', previousSection);
   els.cardPrevButton.addEventListener('click', previousCard);
+  els.navPlayButton.addEventListener('click', activateTransportPlay);
   els.cardNextButton.addEventListener('click', advanceCard);
-  els.shuffleToggle.addEventListener('change', (event) => {
-    setShuffle(event.target.checked);
+  els.sectionNextButton.addEventListener('click', nextSection);
+  els.coverTrack.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary) return;
+    const card = event.target.closest('.cover-card');
+    if (!isTouchSectionCard(card)) return;
+    resetPressedSectionCard();
+    pressedSectionCard = card;
+    card.classList.add('is-touch-active');
+    if (card.setPointerCapture) card.setPointerCapture(event.pointerId);
+  });
+
+  els.coverTrack.addEventListener('pointerup', (event) => {
+    if (!event.isPrimary || !pressedSectionCard) return;
+    const card = pressedSectionCard;
+    resetPressedSectionCard();
+    if (!isTouchSectionCard(card)) return;
+    const releaseTarget = document.elementFromPoint(event.clientX, event.clientY)?.closest('.cover-card');
+    if (releaseTarget !== card) return;
+    suppressNextCoverClick = true;
+    activateCoverCard(card);
+  });
+
+  els.coverTrack.addEventListener('pointercancel', () => {
+    resetPressedSectionCard();
   });
 
   els.coverTrack.addEventListener('click', (event) => {
-    if (event.target.closest('.greek-audio-button')) {
+    if (suppressNextCoverClick) {
+      suppressNextCoverClick = false;
+      event.preventDefault();
       event.stopPropagation();
-      playGreekFromUser();
       return;
     }
     const card = event.target.closest('.cover-card');
     if (!card) return;
-    const selectedIndex = Number(card.dataset.index);
-    if (selectedIndex === activeIndex) advanceCard();
-    else setActiveIndex(selectedIndex);
+    activateCoverCard(card);
   });
 
   els.coverTrack.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     event.stopPropagation();
-    if (event.target.closest('.greek-audio-button')) {
-      playGreekFromUser();
-      return;
-    }
     if (isPlaying && event.key === ' ') {
-      playGreekFromUser();
+      toggleGreekAudioFromTransport();
       return;
     }
     const card = event.target.closest('.cover-card');
@@ -751,7 +1032,79 @@
     setActiveIndex(Number(button.dataset.index));
   });
 
+  document.addEventListener('click', (event) => {
+    if (!isMenuOpen || event.target.closest('.brand')) return;
+    setMenuOpen(false);
+  });
+
   document.addEventListener('keydown', (event) => {
+    if (isMenuOpen && event.key === 'Escape') {
+      event.preventDefault();
+      return setMenuOpen(false);
+    }
+
+    if (isSettingsOpen) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        return closeSettings();
+      }
+
+      if (event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        return toggleShuffle();
+      }
+
+      if (event.key.toLowerCase() === 'g') {
+        event.preventDefault();
+        return toggleGlobalMode();
+      }
+
+      if (event.key.toLowerCase() === 'e') {
+        event.preventDefault();
+        return toggleAutoEnglish();
+      }
+
+      if (event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        return toggleContinuousMode();
+      }
+
+      if (event.key === '[') {
+        event.preventDefault();
+        return adjustContinuousPauseSeconds(-1);
+      }
+
+      if (event.key === ']') {
+        event.preventDefault();
+        return adjustContinuousPauseSeconds(1);
+      }
+
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        return adjustGreekAudioSpeed(5);
+      }
+
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        return adjustGreekAudioSpeed(-5);
+      }
+      return;
+    }
+
+    if (event.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      setMenuOpen(false);
+      return toggleAbout();
+    }
+
+    if (isAboutOpen) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeAbout();
+      }
+      return;
+    }
+
     if (event.key.toLowerCase() === 'p') {
       event.preventDefault();
       return togglePronunciation();
@@ -764,6 +1117,7 @@
 
     if (event.key.toLowerCase() === 'h' || event.key === '?') {
       event.preventDefault();
+      setMenuOpen(false);
       if (isHelpOpen) return closeHelp();
       return openHelp();
     }
@@ -778,7 +1132,7 @@
       return toggleGlobalMode();
     }
 
-    if (event.key.toLowerCase() === 'a') {
+    if (event.key.toLowerCase() === 'e') {
       event.preventDefault();
       return toggleAutoEnglish();
     }
@@ -818,7 +1172,7 @@
 
     if (event.key === ' ') {
       event.preventDefault();
-      if (isPlaying) return playGreekFromUser();
+      if (isPlaying) return toggleGreekAudioFromTransport();
       return advanceCard();
     }
 
@@ -846,7 +1200,10 @@
     }
 
     if (isPlaying) {
-      if (event.key.toLowerCase() === 'e') return playSegment('english');
+      if (event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        return resetCurrentCard();
+      }
     }
   });
 
@@ -855,6 +1212,14 @@
     return;
   }
 
+  syncDeviceClass();
+  if (touchDeviceQuery.addEventListener) {
+    touchDeviceQuery.addEventListener('change', syncDeviceClass);
+  } else if (touchDeviceQuery.addListener) {
+    touchDeviceQuery.addListener(syncDeviceClass);
+  }
+
+  els.copyrightYear.textContent = new Date().getFullYear();
   updateContinuousIndicator();
   renderCarousel();
 })();
