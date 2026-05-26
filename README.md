@@ -8,11 +8,11 @@ TripTalk is a standalone Greek travel phrase flashcard app. It runs entirely fro
 - Illustrated flashcards backed by local PNG assets.
 - English and Greek audio for each phrase, loaded from local MP3 files.
 - Automatic English playback when a card appears.
-- Bottom transport controls for section navigation, card navigation, and target-language audio play/pause/resume.
+- Bottom transport controls for section navigation, card navigation, target-language audio playback, and Continuous Playback pause/resume.
 - Adjustable target audio speed from 75% to 150%.
 - Shuffle mode for practicing cards in random order.
 - Global Mode for practicing every section as one combined deck.
-- Continuous Playback mode for hands-free practice.
+- Continuous Playback mode for hands-free practice, with resumable pause support from the current audio or timer position.
 - Hamburger menu with Settings, Pronunciation, Help, and About.
 - Settings modal with English, Global, Shuffle, Continuous, Continuous pause, and Target Audio Speed controls.
 - Built-in help panel, pronunciation guide, and about screen.
@@ -51,6 +51,7 @@ No build step, server, or dependency installation is required.
 - Click side cards or section dots to switch sections before starting.
 - Click the center flashcard to advance to the next card.
 - Use the bottom transport controls to move between sections, move between cards, and play, pause, or resume target-language audio.
+- In Continuous Playback mode, the main transport button changes to Pause/Resume and controls the full continuous sequence.
 - Open Settings from the hamburger menu to toggle English, Continuous, Global, or Shuffle, adjust the Continuous pause, or change Target Audio Speed.
 - Turn on Shuffle to randomize card order for each section.
 - Turn on Global Mode to combine every section into one deck; when Global Mode and Shuffle are both on, all cards are shuffled together across sections.
@@ -62,7 +63,7 @@ When you move past the last card in a section, TripTalk automatically opens the 
 | Shortcut | Action |
 | --- | --- |
 | `Enter` | Start or advance to the next card |
-| `Space` | Start from section view, or play/pause/resume Greek audio in card view |
+| `Space` | Start from section view. In regular card view, play/pause/resume Greek audio. In Continuous Playback, pause/resume the full continuous sequence |
 | `Arrow Left` / `Arrow Right` | Change sections before card mode; previous/next card in card mode |
 | `Shift + Arrow Left` / `Shift + Arrow Right` | Change sections while in card mode |
 | `,` / `.` | Previous/next, like the arrow keys |
@@ -86,6 +87,7 @@ index.html             Main app shell
 scripts/phrases.js    Phrase data used by the app
 scripts/triptalk.js   Carousel, audio, shuffle, help, and keyboard behavior
 styles/triptalk.css   Responsive visual design
+sw.js                  Offline cache and PWA service worker
 images/               Section and flashcard PNG artwork
 media/                English and Greek MP3 audio
 tools/                Helper files used while preparing phrase assets
@@ -105,3 +107,9 @@ Section cards use:
 - Hover/color image: `images/<section>/section_images/<section>_color.png`
 
 Keep new section names and ids lowercase in asset paths so they match the app's resolver.
+
+## PWA Cache Updates
+
+TripTalk uses `sw.js` to precache the app shell, phrase data, images, and audio for offline use. When changing cached files such as `index.html`, `styles/triptalk.css`, `scripts/phrases.js`, or `scripts/triptalk.js`, bump `CACHE_VERSION` in `sw.js` so installed PWAs and live sessions fetch the new app shell.
+
+Existing installed PWAs may need to be closed and reopened after deployment so the updated service worker can activate.
