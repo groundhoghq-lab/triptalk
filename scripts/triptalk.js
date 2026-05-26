@@ -28,6 +28,7 @@
   let continuousPauseUsesSetting = false;
   let continuousPauseResolve = null;
   let continuousPauseToken = null;
+  let continuousPauseStartedAt = 0;
   let isPronunciationOpen = false;
   let isAboutOpen = false;
   let isSettingsOpen = false;
@@ -35,6 +36,9 @@
   let shouldResumeContinuousAfterHelp = false;
   let shouldResumeContinuousAfterAbout = false;
   let continuousResumeStep = 'start';
+  let continuousResumeOffsetSeconds = null;
+  let continuousResumePauseMs = null;
+  let isContinuousPlaybackPaused = false;
   let pressedSectionCard = null;
   let suppressNextCoverClick = false;
 
@@ -175,6 +179,7 @@
     continuousPauseUsesSetting = false;
     continuousPauseResolve = null;
     continuousPauseToken = null;
+    continuousPauseStartedAt = 0;
   }
 
   function scheduleContinuousPauseTimer() {
@@ -182,6 +187,7 @@
     clearContinuousPlaybackTimer();
     const token = continuousPauseToken;
     const pauseMs = continuousPauseUsesSetting ? continuousPauseMs : continuousPauseDurationMs;
+    continuousPauseStartedAt = Date.now();
     continuousPlaybackTimer = window.setTimeout(() => {
       continuousPlaybackTimer = null;
       const resolve = continuousPauseResolve;
@@ -255,7 +261,7 @@
     setContinuousPauseSeconds(continuousPauseSeconds + delta);
   }
 
-  function playContinuousAudio(kind) {
+  function playContinuousAudio(kind, { offsetSeconds = null } = {}) {
     const record = currentRecord();
     const audio = kind === 'english' ? els.englishAudio : els.greekAudio;
     const audioInfo = resolveAudioInfo(record, kind);
@@ -293,7 +299,6 @@
 
       updateAudioSource(kind, audioInfo.file);
       audio.pause();
-      audio.currentTime = 0;
 
       waitForMetadata(audio)
         .then(() => {
@@ -303,7 +308,7 @@
           }
 
           audio.playbackRate = kind === 'greek' ? greekAudioSpeed / 100 : 1;
-          audio.currentTime = Math.max(0, audioInfo.startSeconds || 0);
+          audio.currentTime = Math.max(0, offsetSeconds ?? audioInfo.startSeconds ?? 0);
           if (kind === 'greek') {
             setGreekAudioButtonActive(true);
           }
@@ -320,33 +325,35 @@
     });
   }
 
-  async function runContinuousPlayback(startAt = 'start') {
+  async function runContinuousPlayback(startAt = 'start', { offsetSeconds = null, pauseMs = null } = {}) {
     if (!continuousMode || !isPlaying) return;
 
     const token = continuousPlaybackToken;
     const shouldRun = (step) => startAt === 'start' || startAt === step;
+    const audioOptions = (step) => (startAt === step && offsetSeconds !== null ? { offsetSeconds } : undefined);
+    const pauseOptions = (step, fallback) => (startAt === step && pauseMs !== null ? { durationMs: pauseMs, useSetting: false } : fallback);
 
     if (autoEnglish) {
       if (shouldRun('english')) {
-        await playContinuousAudio('english');
+        await playContinuousAudio('english', audioOptions('english'));
         if (!continuousMode || token !== continuousPlaybackToken || !isPlaying) return;
       }
       if (shouldRun('english') || shouldRun('betweenEnglishGreek')) {
-        await waitForContinuousPause();
+        await waitForContinuousPause(pauseOptions('betweenEnglishGreek'));
         if (!continuousMode || token !== continuousPlaybackToken || !isPlaying) return;
       }
       if (shouldRun('english') || shouldRun('betweenEnglishGreek') || shouldRun('greek')) {
-        await playContinuousAudio('greek');
+        await playContinuousAudio('greek', audioOptions('greek'));
         if (!continuousMode || token !== continuousPlaybackToken || !isPlaying) return;
       }
-      await waitForContinuousPause({ durationMs: 2000, useSetting: false });
+      await waitForContinuousPause(pauseOptions('afterGreek', { durationMs: 2000, useSetting: false }));
       if (!continuousMode || token !== continuousPlaybackToken || !isPlaying) return;
     } else {
       if (shouldRun('greek')) {
-        await playContinuousAudio('greek');
+        await playContinuousAudio('greek', audioOptions('greek'));
         if (!continuousMode || token !== continuousPlaybackToken || !isPlaying) return;
       }
-      await waitForContinuousPause();
+      await waitForContinuousPause(pauseOptions('afterGreek'));
       if (!continuousMode || token !== continuousPlaybackToken || !isPlaying) return;
     }
 
@@ -393,13 +400,43 @@
 
   function startContinuousPlayback() {
     if (!continuousMode || !sections.length) return;
+    isContinuousPlaybackPaused = false;
     continuousPlaybackToken += 1;
     if (!isPlaying) {
       showCard(0, false, 'next');
     }
     const resumeStep = continuousResumeStep;
+    const resumeOffsetSeconds = continuousResumeOffsetSeconds;
+    const resumePauseMs = continuousResumePauseMs;
     continuousResumeStep = 'start';
-    runContinuousPlayback(resumeStep);
+    continuousResumeOffsetSeconds = null;
+    continuousResumePauseMs = null;
+    runContinuousPlayback(resumeStep, {
+      offsetSeconds: resumeOffsetSeconds,
+      pauseMs: resumePauseMs
+    });
+  }
+
+  function pauseContinuousPlaybackFromUser() {
+    if (!continuousMode || !isPlaying || isContinuousPlaybackPaused) return;
+    captureContinuousResumeStep();
+    isContinuousPlaybackPaused = true;
+    stopContinuousPlayback();
+    updateTransportPlayButton();
+  }
+
+  function resumeContinuousPlaybackFromUser() {
+    if (!continuousMode || !isPlaying || !isContinuousPlaybackPaused) return;
+    startContinuousPlayback();
+    updateTransportPlayButton();
+  }
+
+  function toggleContinuousPlaybackFromTransport() {
+    if (isContinuousPlaybackPaused) {
+      resumeContinuousPlaybackFromUser();
+      return;
+    }
+    pauseContinuousPlaybackFromUser();
   }
 
   function setGreekAudioButtonActive(isActive) {
@@ -422,7 +459,9 @@
 
   function updateTransportPlayButton() {
     if (!els.navPlayButton) return;
-    els.navPlayButton.classList.toggle('is-audio-paused', canResumeCurrentGreekAudio());
+    const canResumeGreek = canResumeCurrentGreekAudio();
+    els.navPlayButton.classList.toggle('is-audio-active', continuousMode && isPlaying ? !isContinuousPlaybackPaused : isGreekAudioButtonActive);
+    els.navPlayButton.classList.toggle('is-audio-paused', continuousMode && isPlaying ? isContinuousPlaybackPaused : canResumeGreek);
     const setTransportPlayContent = (label, icon) => {
       els.navPlayButton.innerHTML = `<span class="transport-label">${label}</span><span class="transport-icon">${icon}</span>`;
     };
@@ -432,12 +471,22 @@
       els.navPlayButton.setAttribute('aria-label', `Start ${name}`);
       return;
     }
+    if (continuousMode) {
+      if (isContinuousPlaybackPaused) {
+        setTransportPlayContent('Resume', '▶');
+        els.navPlayButton.setAttribute('aria-label', 'Resume continuous playback');
+        return;
+      }
+      setTransportPlayContent('Pause', '⏸');
+      els.navPlayButton.setAttribute('aria-label', 'Pause continuous playback');
+      return;
+    }
     if (isGreekAudioButtonActive) {
       setTransportPlayContent('Pause', '⏸');
       els.navPlayButton.setAttribute('aria-label', 'Pause Greek audio');
       return;
     }
-    if (canResumeCurrentGreekAudio()) {
+    if (canResumeGreek) {
       setTransportPlayContent('Resume', '▶');
       els.navPlayButton.setAttribute('aria-label', 'Resume Greek audio');
       return;
@@ -754,6 +803,7 @@
 
   function toggleContinuousMode() {
     continuousMode = !continuousMode;
+    isContinuousPlaybackPaused = false;
     syncSettingsControls();
     updateContinuousIndicator();
     if (continuousMode) {
@@ -789,10 +839,19 @@
   }
 
   function captureContinuousResumeStep() {
+    continuousResumeOffsetSeconds = null;
+    continuousResumePauseMs = null;
     if (currentContinuousPlaybackKind) {
       continuousResumeStep = currentContinuousPlaybackKind;
+      const audio = currentContinuousPlaybackKind === 'english' ? els.englishAudio : els.greekAudio;
+      if (Number.isFinite(audio.currentTime)) {
+        continuousResumeOffsetSeconds = audio.currentTime;
+      }
     } else if (continuousPauseResolve) {
       continuousResumeStep = autoEnglish && continuousPauseUsesSetting ? 'betweenEnglishGreek' : 'afterGreek';
+      const pauseMs = continuousPauseUsesSetting ? continuousPauseMs : continuousPauseDurationMs;
+      const elapsedMs = continuousPauseStartedAt ? Date.now() - continuousPauseStartedAt : 0;
+      continuousResumePauseMs = Math.max(0, pauseMs - elapsedMs);
     } else {
       continuousResumeStep = autoEnglish ? 'english' : 'greek';
     }
@@ -876,10 +935,14 @@
 
   function closeAbout() {
     isAboutOpen = false;
+    suppressNextFlip = true;
     els.aboutPanel.classList.remove('is-visible');
     els.aboutPanel.setAttribute('aria-hidden', 'true');
+    renderCarousel();
     if (shouldResumeContinuousAfterAbout && continuousMode && isPlaying) {
       startContinuousPlayback();
+    } else {
+      continuousResumeStep = 'start';
     }
     shouldResumeContinuousAfterAbout = false;
   }
@@ -915,6 +978,7 @@
   }
 
   function activateTransportPlay() {
+    if (isPlaying && continuousMode) return toggleContinuousPlaybackFromTransport();
     if (isPlaying) return toggleGreekAudioFromTransport();
     return advanceCard();
   }
@@ -1029,7 +1093,8 @@
     event.preventDefault();
     event.stopPropagation();
     if (isPlaying && event.key === ' ') {
-      toggleGreekAudioFromTransport();
+      if (continuousMode) toggleContinuousPlaybackFromTransport();
+      else toggleGreekAudioFromTransport();
       return;
     }
     const card = event.target.closest('.cover-card');
@@ -1186,6 +1251,7 @@
 
     if (event.key === ' ') {
       event.preventDefault();
+      if (isPlaying && continuousMode) return toggleContinuousPlaybackFromTransport();
       if (isPlaying) return toggleGreekAudioFromTransport();
       return advanceCard();
     }
