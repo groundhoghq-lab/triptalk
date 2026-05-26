@@ -788,17 +788,19 @@
     }, 1250);
   }
 
+  function captureContinuousResumeStep() {
+    if (currentContinuousPlaybackKind) {
+      continuousResumeStep = currentContinuousPlaybackKind;
+    } else if (continuousPauseResolve) {
+      continuousResumeStep = autoEnglish && continuousPauseUsesSetting ? 'betweenEnglishGreek' : 'afterGreek';
+    } else {
+      continuousResumeStep = autoEnglish ? 'english' : 'greek';
+    }
+  }
+
   function openHelp() {
     shouldResumeContinuousAfterHelp = continuousMode && isPlaying;
-    if (shouldResumeContinuousAfterHelp) {
-      if (currentContinuousPlaybackKind) {
-        continuousResumeStep = currentContinuousPlaybackKind;
-      } else if (continuousPauseResolve) {
-        continuousResumeStep = autoEnglish && continuousPauseUsesSetting ? 'betweenEnglishGreek' : 'afterGreek';
-      } else {
-        continuousResumeStep = autoEnglish ? 'english' : 'greek';
-      }
-    }
+    if (shouldResumeContinuousAfterHelp) captureContinuousResumeStep();
     if (continuousMode) {
       stopContinuousPlayback();
     } else {
@@ -861,6 +863,7 @@
     if (isPronunciationOpen) closePronunciation();
     if (isSettingsOpen) closeSettings();
     shouldResumeContinuousAfterAbout = continuousMode && isPlaying;
+    if (shouldResumeContinuousAfterAbout) captureContinuousResumeStep();
     if (continuousMode) {
       stopContinuousPlayback();
     } else {
