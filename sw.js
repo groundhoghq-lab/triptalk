@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'triptalk-precache-v1';
+const CACHE_VERSION = 'triptalk-precache-v4';
 const APP_SHELL = [
   './',
   './index.html',
