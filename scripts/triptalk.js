@@ -33,6 +33,7 @@
   let isSettingsOpen = false;
   let isMenuOpen = false;
   let shouldResumeContinuousAfterHelp = false;
+  let shouldResumeContinuousAfterAbout = false;
   let continuousResumeStep = 'start';
   let pressedSectionCard = null;
   let suppressNextCoverClick = false;
@@ -49,6 +50,7 @@
     settingsPauseIncreaseButton: document.getElementById('settingsPauseIncreaseButton'),
     settingsGlobalToggle: document.getElementById('settingsGlobalToggle'),
     settingsEnglishToggle: document.getElementById('settingsEnglishToggle'),
+    settingsContinuousToggle: document.getElementById('settingsContinuousToggle'),
     settingsShuffleToggle: document.getElementById('settingsShuffleToggle'),
     settingsTargetAudioSpeedSlider: document.getElementById('settingsTargetAudioSpeedSlider'),
     settingsTargetAudioSpeedValue: document.getElementById('settingsTargetAudioSpeedValue'),
@@ -585,6 +587,7 @@
   function syncSettingsControls() {
     els.settingsGlobalToggle.checked = globalMode;
     els.settingsEnglishToggle.checked = autoEnglish;
+    els.settingsContinuousToggle.checked = continuousMode;
     els.settingsShuffleToggle.checked = isShuffled;
     els.settingsContinuousPauseValue.textContent = `${continuousPauseSeconds} sec`;
     els.settingsPauseDecreaseButton.disabled = continuousPauseSeconds <= 0;
@@ -857,6 +860,7 @@
     if (isHelpOpen) closeHelp();
     if (isPronunciationOpen) closePronunciation();
     if (isSettingsOpen) closeSettings();
+    shouldResumeContinuousAfterAbout = continuousMode && isPlaying;
     if (continuousMode) {
       stopContinuousPlayback();
     } else {
@@ -871,6 +875,10 @@
     isAboutOpen = false;
     els.aboutPanel.classList.remove('is-visible');
     els.aboutPanel.setAttribute('aria-hidden', 'true');
+    if (shouldResumeContinuousAfterAbout && continuousMode && isPlaying) {
+      startContinuousPlayback();
+    }
+    shouldResumeContinuousAfterAbout = false;
   }
 
   function toggleAbout() {
@@ -940,6 +948,9 @@
   });
   els.settingsEnglishToggle.addEventListener('change', () => {
     toggleAutoEnglish();
+  });
+  els.settingsContinuousToggle.addEventListener('change', () => {
+    toggleContinuousMode();
   });
   els.settingsShuffleToggle.addEventListener('change', (event) => {
     setShuffle(event.target.checked);
