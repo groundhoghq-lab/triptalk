@@ -799,7 +799,7 @@ h1 {
   z-index: 18;
   width: min(620px, calc(100vw - 24px));
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
   padding: clamp(16px, 2.4vw, 24px);
   border: 1px solid rgba(255, 246, 226, .16);
@@ -843,6 +843,18 @@ h1 {
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
+}
+
+.pronunciation-actions {
+  display: flex;
+  justify-content: stretch;
+}
+
+.pronunciation-footer-button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 8px;
+  font-weight: 900;
 }
 
 .pronunciation-table {
@@ -1167,8 +1179,9 @@ h1 {
     top: 0;
     bottom: 0;
     width: 100vw;
-    padding: 14px;
+    padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
     border-radius: 0;
+    touch-action: pan-y;
   }
   .pronunciation-panel-header {
     align-items: center;
