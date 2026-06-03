@@ -41,6 +41,7 @@
   let isContinuousPlaybackPaused = false;
   let pressedSectionCard = null;
   let suppressNextCoverClick = false;
+  let pronunciationSwipeStart = null;
 
   const els = {
     topbar: document.getElementById('topbar'),
@@ -68,6 +69,7 @@
     closeHelpIconButton: document.getElementById('closeHelpIconButton'),
     pronunciationPanel: document.getElementById('pronunciationPanel'),
     closePronunciationButton: document.getElementById('closePronunciationButton'),
+    closePronunciationFooterButton: document.getElementById('closePronunciationFooterButton'),
     selectionView: document.getElementById('selectionView'),
     sectionTitle: document.getElementById('sectionTitle'),
     sectionMeta: document.getElementById('sectionMeta'),
@@ -88,9 +90,14 @@
   };
 
   const touchDeviceQuery = window.matchMedia('(pointer: coarse), (hover: none)');
+  const mobileViewportQuery = window.matchMedia('(max-width: 640px)');
 
   function syncDeviceClass() {
     document.body.classList.toggle('is-touch-device', touchDeviceQuery.matches);
+  }
+
+  function isMobilePronunciationMode() {
+    return touchDeviceQuery.matches && mobileViewportQuery.matches;
   }
 
   function wrapIndex(index) {
@@ -892,6 +899,7 @@
 
   function closePronunciation() {
     isPronunciationOpen = false;
+    pronunciationSwipeStart = null;
     els.pronunciationPanel.classList.remove('is-visible');
     els.pronunciationPanel.setAttribute('aria-hidden', 'true');
   }
@@ -899,6 +907,33 @@
   function togglePronunciation() {
     if (isPronunciationOpen) return closePronunciation();
     return openPronunciation();
+  }
+
+  function startPronunciationSwipe(event) {
+    if (!event.isPrimary || !isPronunciationOpen || !isMobilePronunciationMode()) return;
+    if (event.target.closest('button, a, input, select, textarea')) return;
+    pronunciationSwipeStart = {
+      x: event.clientX,
+      y: event.clientY
+    };
+    if (els.pronunciationPanel.setPointerCapture) {
+      els.pronunciationPanel.setPointerCapture(event.pointerId);
+    }
+  }
+
+  function finishPronunciationSwipe(event) {
+    if (!pronunciationSwipeStart || !event.isPrimary) return;
+    const deltaX = event.clientX - pronunciationSwipeStart.x;
+    const deltaY = event.clientY - pronunciationSwipeStart.y;
+    pronunciationSwipeStart = null;
+
+    if (!isPronunciationOpen || !isMobilePronunciationMode()) return;
+    if (deltaX < 72 || Math.abs(deltaY) > deltaX * 0.65) return;
+    closePronunciation();
+  }
+
+  function cancelPronunciationSwipe() {
+    pronunciationSwipeStart = null;
   }
 
   function openSettings() {
@@ -1046,6 +1081,10 @@
   els.closeHelpButton.addEventListener('click', closeHelp);
   els.closeHelpIconButton.addEventListener('click', closeHelp);
   els.closePronunciationButton.addEventListener('click', closePronunciation);
+  els.closePronunciationFooterButton.addEventListener('click', closePronunciation);
+  els.pronunciationPanel.addEventListener('pointerdown', startPronunciationSwipe);
+  els.pronunciationPanel.addEventListener('pointerup', finishPronunciationSwipe);
+  els.pronunciationPanel.addEventListener('pointercancel', cancelPronunciationSwipe);
   els.sectionPrevButton.addEventListener('click', previousSection);
   els.cardPrevButton.addEventListener('click', previousCard);
   els.navPlayButton.addEventListener('click', activateTransportPlay);
